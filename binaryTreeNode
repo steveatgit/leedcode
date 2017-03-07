@@ -1,0 +1,98 @@
+#include<iostream>
+#include<queue>
+using namespace std;
+
+struct BinaryTreeNode
+{
+	BinaryTreeNode *left;
+	BinaryTreeNode *right;
+	int elem;
+};
+void addBinaryTree(BinaryTreeNode *&root, int elem)
+{
+	if (NULL == root) {
+		BinaryTreeNode *pNode = new BinaryTreeNode();
+		pNode->elem = elem;
+		pNode->left = NULL;
+		pNode->right = NULL;
+		root = pNode;
+	}
+	else {
+		if (elem < root->elem) {
+			addBinaryTree(root->left, elem);
+		}
+		else if (elem > root->elem) {
+			addBinaryTree(root->right, elem);
+		}
+		else {
+			cout << "overlapping." << endl;
+		}
+	}
+}
+void preOrder(BinaryTreeNode *root)
+{
+	if (NULL == root) {
+		return;
+	}
+	cout << root->elem << " ";
+	preOrder(root->left);
+	preOrder(root->right);
+}
+void inOrder(BinaryTreeNode* root)
+{
+	if (NULL == root) {
+		return;
+	}
+	inOrder(root->left);
+	cout << root->elem << " ";
+	inOrder(root->right);
+}
+void postOrder(BinaryTreeNode* root)
+{
+	if (NULL == root) {
+		return;
+	}
+	postOrder(root->left);
+	postOrder(root->right);
+	cout << root->elem << " ";
+}
+void levelOrder(BinaryTreeNode* root)
+{
+	if (NULL == root) {
+		return;
+	}
+	queue<BinaryTreeNode*> q;
+	q.push(root);
+	while (!q.empty()) {
+		BinaryTreeNode* pNode = q.front();
+		q.pop();
+		cout << pNode->elem << " ";
+		if (pNode->left) {
+			q.push(pNode->left);
+		}
+		if (pNode->right) {
+			q.push(pNode->right);
+		}
+	}
+}
+int main()
+{
+	BinaryTreeNode *root = NULL;
+	int elems[6] = { 24, 15, 27, 4, 43, 87 };
+	for (int i = 0; i< 6; i++) {
+		addBinaryTree(root, elems[i]);
+	}
+	preOrder(root);
+	cout << endl;
+	inOrder(root);
+	cout << endl;
+	postOrder(root);
+	cout << endl;
+	levelOrder(root);
+	cout << endl;
+	return 0;
+}
+//24 15 4 27 43 87
+//4 15 24 27 43 87
+//4 15 87 43 27 24
+//24 15 27 4 43 87
