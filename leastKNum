@@ -1,5 +1,6 @@
 wqu-m01:code wqu$ ./a.out 
 4 3 2 1 
+O(n+nlogk)
 wqu-m01:code wqu$ cat test.cpp 
 #include <iostream>  
 #include <vector>  
