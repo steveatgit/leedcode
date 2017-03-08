@@ -1,0 +1,78 @@
+
+wqu-m01:code wqu$ ./a.out 
+10 5 7 
+10 12 
+wqu-m01:code wqu$ cat test.cpp 
+#include <iostream>  
+#include <vector>  
+using namespace std;  
+struct BinaryTreeNode
+{
+	BinaryTreeNode* left;
+	BinaryTreeNode* right;
+	int elem;
+};
+void addBinaryTree(BinaryTreeNode *&root, int elem)
+{
+	if (NULL == root) {
+		BinaryTreeNode *pNode = new BinaryTreeNode();
+		pNode->elem = elem;
+		pNode->left = NULL;
+		pNode->right = NULL;
+		root = pNode;
+	}
+	else {
+		if (elem < root->elem) {
+			addBinaryTree(root->left, elem);
+		}
+		else if (elem > root->elem) {
+			addBinaryTree(root->right, elem);
+		}
+		else {
+			cout << "overlapping." << endl;
+		}
+	}
+}
+void printPathCore(int expect, int curr, vector<BinaryTreeNode*>& path, BinaryTreeNode* root)
+{
+	if(root == NULL) {
+		return;
+	}
+	path.push_back(root);
+	curr += root->elem;
+	bool isLeaf = (root->left ==NULL) && (root->right == NULL);
+	if(isLeaf) {
+		if(expect == curr) {
+			for(vector<BinaryTreeNode*>::iterator iter=path.begin();iter!=path.end();iter++) {
+				cout<<(*iter)->elem<<" ";
+			}
+			cout<<endl;
+		}
+	}
+	if(root->left) {
+		printPathCore(expect, curr, path, root->left);
+	}
+	if(root->right) {
+		printPathCore(expect, curr, path, root->right);
+	}
+	curr -= root->elem;
+	path.pop_back();
+}
+void printPath(int expect, BinaryTreeNode* root)
+{
+	if(NULL == root) {
+		return;
+	}
+	int curr = 0;
+	vector<BinaryTreeNode *> path;
+	printPathCore(expect, curr, path, root);
+}
+int main()
+{
+   BinaryTreeNode *root = NULL;
+	int elems[5] = { 10, 5, 4, 7, 12 };
+	for (int i = 0; i< 5; i++) {
+		addBinaryTree(root, elems[i]);
+	}
+	printPath(22, root);
+}
