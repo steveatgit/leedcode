@@ -1,0 +1,21 @@
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        vector<int> ret;
+        if(nums.size()<2) {
+            return ret;
+        }
+        map<int, int> m;
+        for(int i=0;i<nums.size();i++) {
+            m[nums[i]] = i;
+        }
+        for(int i=0;i<nums.size();i++) {
+            int t = target - nums[i];
+            if(m.count(t) && m[t] !=i) {  // 防止两个数据都取到自己3+3=6
+                ret.push_back(i);
+                ret.push_back(m[t]);
+                return ret;
+            } 
+        }
+    }
+};
