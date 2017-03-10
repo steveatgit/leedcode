@@ -1,0 +1,29 @@
+wqu-m01:code wqu$ ./a.out
+5
+-6
+wqu-m01:code wqu$ !ca
+cat yixing.cpp
+#include <iostream>
+using namespace std;
+
+int main()
+{
+int i = 5;
+cout<<i<<endl;
+cout<<~i<<endl;
+}
+计算机中，数值是以补码形式存在的，~表示位取反
+wqu-m01:code wqu$ ./a.out
+5
+fffffffa
+wqu-m01:code wqu$ !c
+cat yixing.cpp
+#include <iostream>
+using namespace std;
+
+int main()
+{
+int i = 5;
+cout<<hex<<i<<endl;
+cout<<hex<<~i<<endl;
+}
