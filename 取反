@@ -9,10 +9,12 @@ using namespace std;
 int main()
 {
 int i = 5;
-cout<<i<<endl;
-cout<<~i<<endl;
+cout<<i<<endl;   // 5
+cout<<~i<<endl;  // 6
+cout<<bitset<8>(i)<<endl; //  00000101
+cout<<bitset<8>(~i)<<endl; // 11111010   
 }
-计算机中，数值是以补码形式存在的，~表示位取反
+计算机中，数值是以补码形式存在的，~表示位取反，正数的原码和补吗相同，负数的补码为首位不变，剩余位取反加1
 wqu-m01:code wqu$ ./a.out
 5
 fffffffa
