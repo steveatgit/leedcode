@@ -1,0 +1,26 @@
+class Solution {
+public:
+    vector<vector<int>> subsetsWithDup(vector<int>& nums) {
+        vector<vector<int> > res;
+        vector<int> emp;
+        res.push_back(emp);
+        if (nums.size() == 0)
+            return res;
+        sort(nums.begin(), nums.end());
+        int m = 0;
+        for (vector<int>::iterator i = nums.begin(); i!=nums.end(); i++) {
+            int start = (i!=nums.begin() && *i==*(i-1))?m:0; // have the same items
+            int end = res.size();
+            for(int j = start; j<end;j++) {  // only from the set added from the first item
+                vector<int> v;
+                for (vector<int>::iterator iter = res[j].begin();iter!=res[j].end();iter++) {
+                    v.push_back(*iter);
+                }
+                v.push_back(*i);
+                res.push_back(v);
+            }
+            m = end;
+        }
+        return res;
+    }
+};
