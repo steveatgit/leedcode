@@ -1,0 +1,22 @@
+//http://www.cnblogs.com/TenosDoIt/p/3736725.html
+class Solution {
+public:
+    int lengthOfLongestSubstring(string s) {
+        vector<int> bitmap(128, -1);
+        int ret = 0;
+        int start = 0, lastStart = 0;
+        for(int i=0;i<s.size();i++) {
+            if(bitmap[s[i]] != -1) {
+                ret = max(ret, i-start);
+                lastStart = start;
+                start = bitmap[s[i]]+1;
+                for(int j=lastStart;j<start;j++) {
+                    bitmap[s[j]] = -1;
+                }
+            }
+            bitmap[s[i]] = i;
+        }
+        ret = max(ret, (int)s.size()-start);  // s.size() is size_type type
+        return ret;
+    }
+};
