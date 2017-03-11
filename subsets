@@ -1,0 +1,24 @@
+class Solution {
+public:
+    vector<vector<int>> subsets(vector<int>& nums) {
+        vector<vector<int> > ret;
+        vector<int> emp;
+        ret.push_back(emp);  //这个不能少，这样ret.size大小为1，进行下面的循环
+        if(nums.size()<=0) {
+            return ret;
+        }
+        sort(nums.begin(), nums.end());
+        for(int i=0;i<nums.size();i++) {
+            int size = ret.size();
+            for(int j=0;j<size;j++) {
+                vector<int> vec;
+                for(vector<int>::iterator iter = ret[j].begin();iter!=ret[j].end();iter++) {
+                    vec.push_back(*iter);
+                }
+                vec.push_back(nums[i]);
+                ret.push_back(vec);
+            }
+        }
+        return ret;
+    }
+};
