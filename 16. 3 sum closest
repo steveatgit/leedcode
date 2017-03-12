@@ -1,0 +1,36 @@
+class Solution {
+public:
+    int ret = INT_MAX;
+    int diff = INT_MAX;
+    int threeSumClosest(vector<int>& nums, int target) {
+        if(nums.size()<3)
+            return ret;
+        sort(nums.begin(), nums.end());
+        for(int i=0;i<nums.size()-2;i++) {
+            if(i!=0 && nums[i-1] == nums[i])
+                continue;
+            find(nums, i+1, nums.size()-1, nums[i], target);
+        }
+        return ret;
+    }
+    void find(vector<int>& nums, int begin, int end, int first, int target)
+    {
+        int l = begin;
+        int r = end;
+        while(l<r) {
+            int sum = nums[l] + nums[r] + first;
+            if(abs(sum - target)<diff) {
+                diff = abs(sum - target);
+                ret = sum;
+            }
+            if (sum == target) {
+                ret = target;
+                return;
+            }else if (sum < target) {
+                l++;
+            } else {
+                r--;
+            }
+        }
+    }
+};
