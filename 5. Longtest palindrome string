@@ -1,0 +1,22 @@
+//http://www.cnblogs.com/strugglion/p/6390357.html
+class Solution {
+public:
+    string longestPalindrome(string s) {
+        bool **isPal = new bool*[s.size()];
+        for(int i=0;i<s.size();i++) {
+            isPal[i] = new bool[s.size()];
+        }
+        int left = 0, right = 0;
+        for(int j=0;j<s.size();j++) {
+            for(int i=0;i<j;i++) {
+                isPal[i][j] = ((s[i] == s[j]) && (j == i+1 || isPal[i+1][j-1]));
+                if(isPal[i][j] && ((j-i)>(right - left))) {
+                    left = i;
+                    right = j;
+                }
+            }
+            isPal[j][j] = true;
+        }
+        return s.substr(left, right-left+1);
+    }
+};
