@@ -1,0 +1,43 @@
+class Solution {
+public:
+    vector<vector<int> > ret;
+    vector<vector<int>> fourSum(vector<int>& nums, int target) {
+        if(nums.size()<4) {
+            return ret;
+        }
+        sort(nums.begin(), nums.end());
+        for(int i=0;i<nums.size()-3;i++) {
+            if(i!=0 && nums[i-1]==nums[i])
+                continue;
+            for(int j=i+1;j<nums.size()-2;j++) {
+                if(j!=i+1 && nums[j-1] == nums[j])
+                    continue;
+                find(nums, j+1, nums.size()-1, nums[j], nums[i], target);
+            }
+        }
+        return ret;
+    }
+    void find(vector<int>& nums, int begin, int end, int second, int first, int target)
+    {
+        int l = begin;
+        int r = end;
+        while(l<r) {
+            if(nums[l] + nums[r] + second + first == target) {
+                vector<int> vec;
+                vec.push_back(first);
+                vec.push_back(second);
+                vec.push_back(nums[l]);
+                vec.push_back(nums[r]);
+                ret.push_back(vec);
+                while(l<r && nums[l+1] == nums[l]) l++;
+                while(l<r && nums[r-1] == nums[r]) r--;
+                l++;
+                r--;
+            } else if(nums[l] + nums[r] + second + first < target) {
+                l++;
+            } else {
+                r--;
+            }
+        }
+    }
+};
