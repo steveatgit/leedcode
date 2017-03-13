@@ -1,0 +1,60 @@
+class Solution {
+public:
+    int strStr(string haystack, string needle) {
+       /* 暴力解法
+        int m = haystack.size();
+        int n = needle.size();
+        for(int i=0;i<=m-n;i++) {
+            int j;
+            for(j=0;j<n;j++) {
+                if(haystack[i+j] != needle[j])
+                    break;
+            }
+            if (j==n) {
+                return i;
+            }
+        }
+        return -1;
+        */
+        // KMP 
+        // http://www.ruanyifeng.com/blog/2013/05/Knuth%E2%80%93Morris%E2%80%93Pratt_algorithm.html
+        // http://blog.csdn.net/v_july_v/article/details/7041827
+        // http://blog.csdn.net/hackbuteer1/article/details/7319115
+        // http://www.cnblogs.com/ganganloveu/p/3753981.html
+        int m = haystack.size();
+        int n = needle.size();
+        int *next = new int[n];
+        getNext(needle, next);
+        int i = 0;
+        int j = 0;
+        while(i<m && j<n) {
+            if(j == -1 || haystack[i] == needle[j]) {
+                i++;
+                j++;
+                
+            } else {
+                j = next[j];
+            }
+        }
+        if(j==n) {
+            return i-n; 
+        }
+        return -1;
+    }
+    void getNext(string needle, int next[])
+    {
+        int len = needle.length();
+        int k = -1;   //公式中的P[k]  P[j]  P(0,..k-1) = P(j-k..,j-1)
+        int j = 0;
+        next[j] = -1;  // initial next[]
+        while(j<len-1) {  
+            if(k == -1 || needle[k] == needle[j]) {
+                k++;
+                j++;
+                next[j] = k;  // thus k<len-1
+            } else {
+                k = next[k];
+            }
+        }
+    }
+};
