@@ -1,0 +1,27 @@
+class Solution {
+public:
+    int search(vector<int>& nums, int target) {
+        // http://www.cnblogs.com/grandyang/p/4325648.html
+        int low = 0;
+        int high  = nums.size() - 1;
+        while(low <= high) {  // notice equal
+            int mid = (low+high)/2;
+            if(target == nums[mid]) {
+                return mid;
+            } else if(nums[mid] < nums[high]) {
+                if(target>nums[mid] && target<=nums[high]) { // 与有序的数组段两头值比较，看看是否是在这段数组内，注意等号
+                    low = mid+1;
+                } else {
+                    high = mid-1;
+                }
+            } else {
+                if(target<nums[mid] && target>=nums[low]) {
+                    high = mid-1;
+                } else {
+                    low = mid+1;
+                }
+            }
+        }
+        return -1;
+    }
+};
