@@ -1,0 +1,52 @@
+class Solution {
+public:
+    vector<int> searchRange(vector<int>& nums, int target) {
+        // http://www.cnblogs.com/xinsheng/p/3510989.html
+        vector<int> res;
+        if(nums.size()==0) {
+            res.push_back(-1);
+            res.push_back(-1);
+            return res;
+        }
+        int lIndex = -1, rIndex = -1;
+        lIndex = lSearch(nums, target);
+        rIndex = rSearch(nums, target);
+        res.push_back(lIndex);
+        res.push_back(rIndex);
+        return res;
+    }
+    int lSearch(vector<int>& nums, int target)
+    {
+        int size = nums.size();
+        int low = 0, high = size-1;
+        while(low<=high) {
+            int mid = (low+high)>>1;
+            if(nums[mid] < target) {
+                low = mid+1;
+            } else {  //nums[mid] == target, high cursor move to low, low not chage
+                high = mid-1;  
+            }
+        }
+        if(low >= size || nums[low] != target) {  // notice nums[low] should be valid, so verify low<size
+            return -1;
+        }
+        return low;
+    }
+    int rSearch(vector<int>& nums, int target)
+    {
+        int size=nums.size();
+        int low = 0, high = size-1;
+        while(low<=high) {
+            int mid = (low+high)>>1;
+            if(nums[mid] > target) {
+                high = mid-1;
+            } else {
+                low = mid + 1;
+            }
+        }
+        if(high<0 || nums[high] != target) {
+            return -1;
+        }
+        return high;
+    }
+};
