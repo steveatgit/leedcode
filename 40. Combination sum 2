@@ -1,0 +1,30 @@
+class Solution {
+public:
+    vector<vector<int>> combinationSum2(vector<int>& candidates, int target) {
+        //http://blog.csdn.net/linhuanmars/article/details/20829099
+        vector<vector<int> > ret;
+        if(candidates.size() <= 0 || target <=0) {
+            return ret;
+        }
+        sort(candidates.begin(), candidates.end());
+        vector<int> vec;
+        combinationSum2Core(candidates, target, 0, ret, vec);
+        return ret;
+    }
+    void combinationSum2Core(vector<int>& candidates, int target, int start, vector<vector<int> >&ret, vector<int>& vec)
+    {
+        if(target < 0) 
+            return;
+        if(target == 0) {
+            ret.push_back(vec);
+            return;
+        }
+        for(int i=start;i<candidates.size();i++) {
+            if(i>start && candidates[i] == candidates[i-1])
+                continue;   //   不太懂链接文章中的解释
+            vec.push_back(candidates[i]);
+            combinationSum2Core(candidates, target-candidates[i], i+1, ret, vec);
+            vec.pop_back();
+        }
+    }
+};
