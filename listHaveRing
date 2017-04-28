@@ -1,0 +1,21 @@
+http://blog.csdn.net/nwpulei/article/details/8126213
+
+wqu-m01:code wqu$ vi haveRing.cpp
+
+bool haveRing(ListNode *head)
+{
+   assert(NULL != head);
+   ListNode *slow = head;
+   ListNode *fast = head;
+   if(fast) {
+      fast = fast->next; // fast go one step first
+   }
+   while(fast && fast->next) {
+      if(fast == slow || fast->next == slow) {
+         return true;
+      }
+      slow = slow->next;
+      fast = fast->next->next;
+   }
+   return false;
+}
