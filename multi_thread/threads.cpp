@@ -3,7 +3,7 @@
 #include<pthread.h>
 using namespace std;
 
-void *thread(void *ptr)
+void* thread(void *ptr)
 {
 	for(int i=0;i<3;i++) {
 		sleep(1);
