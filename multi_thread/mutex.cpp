@@ -4,7 +4,7 @@ char buffer;
 int buf_has_item = 0;
 pthread_mutex_t mutex;
 
-void reader_function(void)
+void* reader_function(void* ptr)
 {
 	while(1) {
 		pthread_mutex_lock(&mutex);
@@ -17,7 +17,7 @@ void reader_function(void)
 	}
 }
 
-void writer_function(void)
+void* writer_function(void *ptr)
 {
 	while(1) {
 		pthread_mutex_lock(&mutex);
@@ -34,7 +34,7 @@ int main()
 {
 	pthread_t id;
 	pthread_mutex_init(&mutex, NULL);
-	pthread_create(&id, NULL, (void *)&reader_function, NULL);
+	pthread_create(&id, NULL, reader_function, NULL);
 	writer_function();
 	return 0;
 }
