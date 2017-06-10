@@ -16,7 +16,7 @@ void* readData1(void* ptr)
 	while(!feof(fp)) {
 		sleep(1);
 		fscanf(fp, "%d %d", &stack[size][0], &stack[size][1]);
-		sem_post(&sem);
+		sem_post(&sem);  //释放信号量，信号量值+1，并通知其他等待线程
 		++size;
 	}
 	fclose(fp);
@@ -39,7 +39,7 @@ void *handleData1(void *ptr)
 {
 	while(1) {
 		sleep(1);
-		sem_wait(&sem);
+		sem_wait(&sem);  //等待信号量，信号量值-1，然后等待直到信号量的值>0
 		printf("Plus:%d+%d=%d\n", stack[size][0], stack[size][1], stack[size][0]+stack[size][1]);
 		--size;
 	}
