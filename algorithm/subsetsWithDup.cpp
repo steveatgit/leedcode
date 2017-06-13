@@ -22,6 +22,7 @@ vector<vector<int> > subsetsWithDup(vector<int> &S)
 			v.push_back(*i);
 			res.push_back(v);
 		}
+		m = end;
 	}
 	return res;
 }
