@@ -1,8 +1,8 @@
 创建一个Main目录，为了保存编译出来的结果，否则Makefile编译不过
 运行./Main/my_echo，启动server，调用TCPServer的构造函数（bind，listen，注册回调
 函数handle_proc，是为了传递connfd给协议类echo的handle()函数，其中一些说法可以参
-见原博客http://blog.csdn.net/yw8355507/article/details/51472426，最后实际上是从
-channel中拿出一个节点后，回调函数调用的就是这个handle()函数，在echo中也就是读然
+见原博客http://blog.csdn.net/yw8355507/article/details/51472426
+最后实际上是从channel中拿出一个节点后，回调函数调用的就是这个handle()函数，在echo中也就是读然
 后写），然后会运行TCPServer中的run，起多个线程等待从队列中取节点执行handle,
 epoll循环将事件加入工作队列
 我发现在epoll的add_to_channel中只有注册set_complete_callback()但是没有修改com_flag
