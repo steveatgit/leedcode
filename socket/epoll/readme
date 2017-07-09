@@ -1,1 +1,22 @@
 http://www.cnblogs.com/Anker/archive/2013/08/17/3263780.html
+只能在linux环境下，因为macos中不支持epoll
+这个不支持多个client，server端报错accept error: invalid argument
+但是如果是刚启动的机器，可以像博客中写的启动多个client
+修改：
+在server.c中clifd = accept(listenfd,(struct sockaddr*)&cliaddr,&cliaddrlen);
+函数前加socklen_t  cliaddrlen = sizeof(cliaddr);进行初始化，就可以启动多个client
+http://blog.csdn.net/androidzhaoxiaogang/article/details/8456614
+
+启动两个client：
+tcp        0      0 0.0.0.0:8787            0.0.0.0:*               LISTEN      4983/server     
+tcp        0      0 127.0.0.1:60388         127.0.0.1:8787          ESTABLISHED 4984/client     
+tcp        0      0 127.0.0.1:8787          127.0.0.1:60388         ESTABLISHED 4983/server     
+tcp        0      0 127.0.0.1:8787          127.0.0.1:60389         ESTABLISHED 4983/server     
+tcp        0      0 127.0.0.1:60389         127.0.0.1:8787          ESTABLISHED 4985/client
+
+如果关闭socket后，再启动server，有时会报错bind error: address already in use，
+因为上一次的连接还没有完全断开
+netstat -anp | grep 8787
+tcp        0      0 127.0.0.1:8787          127.0.0.1:60388         TIME_WAIT   -               
+tcp        0      0 127.0.0.1:8787          127.0.0.1:60389         TIME_WAIT   - 
+就是说还没有完全关闭，等待2MSL，（大概60s，不知道对不对）

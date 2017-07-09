@@ -38,3 +38,6 @@ I help you learn something, I'd love to know!
   Happy hacking!
 
                                    J. David Blackstone
+
+自己的理解：启动httpd,打开浏览器，输入127.0.0.1:port,因为有多线程，所以可以打开
+多个client，执行完cgi脚本后，就关闭这个client连接了。

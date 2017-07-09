@@ -1,0 +1,3 @@
+server.c.bak and client.c.bak 是固定好port，然后进行连接，
+server.c and client.c是先server bind，然后getsocketname得到port，然后client再
+去是用这个port

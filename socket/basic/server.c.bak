@@ -14,7 +14,6 @@ int main(int argc, char** argv)
     struct sockaddr_in     servaddr;
     char    buff[4096];
     int     n;
-	int     port = 0;
 
     if( (listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1 ){
     printf("create socket error: %s(errno: %d)\n",strerror(errno),errno);
@@ -24,23 +23,12 @@ int main(int argc, char** argv)
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(port);
+    servaddr.sin_port = htons(6666);
 
     if( bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) == -1){
     printf("bind socket error: %s(errno: %d)\n",strerror(errno),errno);
     exit(0);
     }
-	if(port == 0) {
-		int servaddrlen = sizeof(servaddr);
-		if (getsockname(listenfd, (struct sockaddr*)&servaddr,
-            &servaddrlen) == -1) {
-			printf("getsockname error");
-		}
-		port = ntohs(servaddr.sin_port);
-		printf("server start on %d:%d\n", 
-               ntohl(servaddr.sin_addr.s_addr), port);
-	}
-    
 
     if( listen(listenfd, 10) == -1){
     printf("listen socket error: %s(errno: %d)\n",strerror(errno),errno);
