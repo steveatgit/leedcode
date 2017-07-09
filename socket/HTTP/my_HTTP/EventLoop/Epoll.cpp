@@ -109,11 +109,13 @@ void Epoll::handle_accept(int epfd, int listenfd)
 {
 	int conn_sock;
     struct sockaddr_in clientaddr;
-    socklen_t addrlen;
+    socklen_t addrlen = sizeof(clientaddr);
 
 	while ((conn_sock = accept(listenfd, (sockaddr *)&clientaddr, &addrlen)) > 0) 
 	{
-		printf("Client from %s connected!\n", inet_ntoa(((struct sockaddr_in *)&clientaddr)->sin_addr));
+		printf("Client from %s:%d connected!\n", 
+                       inet_ntoa(((struct sockaddr_in *)&clientaddr)->sin_addr),
+		       clientaddr.sin_port);
 		set_fd_nonblocking(conn_sock);
     	epoll_add_event(epfd, conn_sock, EPOLLIN|EPOLLET);
 	}
