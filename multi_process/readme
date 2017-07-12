@@ -4,5 +4,4 @@ fd[1]为写端，fd[0]为读端
 
 http://blog.csdn.net/kangroger/article/details/38370643
 pipe2.c 包含close
-fifo1.c 建立命名管道，写数据
-fifo2.c 读管道数据，之后删除管道
+这里命名管道运行有问题，不用看这里的命名管道
