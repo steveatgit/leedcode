@@ -9,7 +9,7 @@ int main()
 	int fd;
 	unlink(PATH);
 	mkfifo(PATH, 0777);
-	if(fork()>0) {
+	if(fork()==0) { //child process
 		char s[] = "hello world";
 		fd = open(PATH, O_WRONLY);
 		write(fd, s, strlen(s));
