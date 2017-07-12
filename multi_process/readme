@@ -1,0 +1,8 @@
+http://blog.csdn.net/thinkinwm/article/details/8710857
+pipe.c  简单的pipe程序，没有明确close管道的读写端，url中有pipe的图
+fd[1]为写端，fd[0]为读端
+
+http://blog.csdn.net/kangroger/article/details/38370643
+pipe2.c 包含close
+fifo1.c 建立命名管道，写数据
+fifo2.c 读管道数据，之后删除管道
