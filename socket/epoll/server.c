@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#define IPADDRESS   "127.0.0.1"
+#define IPADDRESS   "0.0.0.0"
 #define PORT        8787
 #define MAXSIZE     1024
 #define LISTENQ     5
@@ -111,7 +111,7 @@ static void handle_accpet(int epollfd,int listenfd)
 {
     int clifd;
     struct sockaddr_in cliaddr;
-    socklen_t  cliaddrlen;
+    socklen_t  cliaddrlen = sizeof(cliaddr);
     clifd = accept(listenfd,(struct sockaddr*)&cliaddr,&cliaddrlen);
     if (clifd == -1)
         perror("accpet error:");

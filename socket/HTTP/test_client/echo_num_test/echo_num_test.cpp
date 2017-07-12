@@ -6,7 +6,7 @@
  ************************************************************************/
 
 #include "../Base/csapp.h"
-const int total_connect = 100000;
+const int total_connect = 10000;
 const int every_thread_connect =100;
 int fds[total_connect];
 
