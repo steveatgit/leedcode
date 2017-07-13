@@ -62,6 +62,7 @@ void accept_request(int client)
  char *query_string = NULL;
 
  numchars = get_line(client, buf, sizeof(buf));
+ printf("get http request: %s", buf);  // if input 127.0.0.1 in chrome,  GET / HTTP/1.1
  i = 0; j = 0;
  while (!ISspace(buf[j]) && (i < sizeof(method) - 1))
  {
@@ -87,7 +88,7 @@ void accept_request(int client)
   url[i] = buf[j];
   i++; j++;
  }
- url[i] = '\0';
+ url[i] = '\0';  //  "/"
 
  if (strcasecmp(method, "GET") == 0)
  {
@@ -102,7 +103,7 @@ void accept_request(int client)
   }
  }
 
- sprintf(path, "htdocs%s", url);
+ sprintf(path, "htdocs%s", url);  // path="htdocs/"
  if (path[strlen(path) - 1] == '/')
   strcat(path, "index.html");
  if (stat(path, &st) == -1) {
@@ -119,7 +120,7 @@ void accept_request(int client)
       (st.st_mode & S_IXOTH)    )
    cgi = 1;
   if (!cgi)
-   serve_file(client, path);
+   serve_file(client, path); // show index.html page
   else
    execute_cgi(client, path, method, query_string);
  }
