@@ -1,598 +1,468 @@
-/*************************************************************************	> File Name: HTTP.cpp
-	> Author:  YinWen
-	> Mail: yinwenatbit@163.com
-	> Created Time: Mon 16 May 2016 08:24:14 PM CST
- ************************************************************************/
-
+#include <stdio.h>  
+#include <sys/socket.h>  
+#include <sys/types.h>  
+#include <netinet/in.h>  
+#include <arpa/inet.h>  
+#include <unistd.h>  
+#include <ctype.h>  
+#include <strings.h>  
+#include <string.h>  
+#include <sys/stat.h>  
+#include <pthread.h>  
+#include <sys/wait.h>  
+#include <stdlib.h> 
 #include "HTTP.h"
-#include "../Base/helper.h"
-#include "../Base/csapp.h"
-#include <assert.h>
-#include <fstream>
-#include <iostream>
-#include <ctype.h>
 
-using std::cin;
-using std::cout;
-using std::endl;
+#define ISspace(x) isspace((int)(x))  
+  
+#define SERVER_STRING "Server: jdbhttpd/0.1.0\r\n"
+
+HTTP::HTTP(int fd):client(fd) {}
 
 void HTTP::handle()
 {
-    accept_request();
-    handle_request();
-    send_response();
-}
-
-void HTTP::set_request_flag(bool flag)
-{
-    _request_flag =flag;
-}
-
-void HTTP::set_response_flag(bool flag)
-{
-    _response_flag =flag;
-}
-
-void HTTP::accept_request()
-{
-    char buf[MAXLINE];
-    rio_t rio;
-    rio_readinitb(&rio, _connfd);
-    
-    int nread;
-    nread = rio_readlineb(&rio, buf, MAXLINE);
-
-    string first_line(buf, buf+nread);
-    //cout<<"first line:\n"<<first_line<<endl;
-    //cout<<"end of first_line"<<endl;
-
-
-    char *start = buf;
-    char *finish = start +nread;
-    char *cur = start;
-    char *end;
-
-    while(isspace(*cur))
-        cur++;
-    end = cur;
-    while(!isspace(*end))
-        end++;
-    
-
-    //get method
-    _request.set_method(cur, end);
-
-    cur = end;
-    while(isspace(*cur))
-        cur++;
-    end = cur;
-    while(!isspace(*end))
-        end++;
-    
-
-    //get uri and query
-    string raw_uri(cur, end);
-    //cout<<"raw_uri: "<<raw_uri<<endl;
-    string query, uri;
-    uri = parse_uri(raw_uri, query);
-    //cout<<"query: "<<query<<endl<<"uri: "<<uri<<endl;
-
-    _request.set_uri(uri);
-    _request.set_query(query);
-    
-    
-    cur = end;
-    while(isspace(*cur))
-        cur++;
-    end = cur;
-    while(!isspace(*end) && end<finish)
-        end++;
-
-    //get version
-    _request.set_version(cur, end);
-    
-    
-    //get headers
-    while(nread = rio_readlineb(&rio, buf, MAXLINE))
-    {
-        start = buf;
-        if(*start == '\r' && *(start+1) == '\n')
-            break;
-        
-        finish = start +nread;
-
-        cur = start;
-        while(isspace(*cur))
-            cur++;
-        end = cur;
-        while(!isspace(*end))
-            end++;
-        
-        _request.add_header(cur, end);
-
-    }
-
-    //get body
-    string len_str = _request.get_header("Content-Length");
-
-    if(!len_str.empty()) 
-    {
-        int len = atoi(len_str.data());
-        while(len>0)
-        {
-            nread = rio_readnb(&rio, buf, MAXLINE);
-            if(nread <=0)
-                break;
-            _request.append_to_body(buf, buf+nread);
-            len -= nread;
-        }
-
-    }
-    set_request_flag(true);
-
-}
-
-void HTTP::handle_request()
-{
-    //accept_request first
-    assert(_request_flag);
-
-    set_response_flag(true);
-    if(!supported())
-    {
-        noimplement();
-        return;
-    }
-
-    string uri = _request.get_uri();
-    string path = get_absolute_path();
-    
-    if(!is_path_exist(path) && _request.get_method()!=HTTP_Method::POST)
-    {
-        not_found();
-        return;
-    }
-    
-    if(is_dir(path))
-    {
-        if(!serve_index())
-            serve_hello();
-        return;
-    }
-
-    if(!is_access(path))
-    {
-        cout<<"outcome is cannot access: "<<path<<endl;
-        serve_forbidden();
-        return;
-    }
-
-
-    bool success = false;
-    switch(_request.get_method())
-    {
-        case HTTP_Method::GET:
-        case HTTP_Method::HEAD:
-            if(_request.get_query().empty())
-                success = serve_file(path);
-            else
-                success = execute_cgi(path);
-            break;
-        case HTTP_Method::PUT:
-            success = put_file(path);
-            break;
-
-        case HTTP_Method::POST:
-            success = execute_cgi(path);
-            break;
-
-    }
-    if(!success)
-        internal_server_error();
-
-}
-
-
-void HTTP::send_response()
-{
-    string time_now = get_now_time();
-    _response.add_header("Date", time_now);
-    string body = _response.get_body();
-    int len = body.size();
-    _response.add_header("Content-Length", std::to_string(len));
-
-    string send_data;
-    if(_request.get_method() == HTTP_Method::HEAD)
-        send_data = _response.get_response_without_body();
-    else
-        send_data = _response.get_response();
-
-    //rio_writen(_connfd, (void *)send_data.c_str(), send_data.size());
-    int n = write(_connfd, send_data.c_str(), send_data.size());
-    if(n == -1 && errno == SIGPIPE)
-        close(_connfd);
-}
-
-
-void HTTP::internal_server_error()
-{
-    string body;
-    body +="<HTML><HEAD><TITLE>Internel Server Error</TITLE></HEAD>\r\n";
-    body +="<BODY><p>!</p>\r\n";
-    body +="</p></HTML>\r\n";
-
-    _response.set_status_code(403);
-    _response.add_header("Content-Type", "text/html");
-    _response.set_body(body);
-
-}
-
-
-bool HTTP::execute_cgi(string &path)
-{
-    pid_t pid;
-    int input_cgi[2];
-    int output_cgi[2];
-
-    struct stat sbuf;
-    stat(path.c_str(), &sbuf);
-
-    if(!(S_IXUSR & sbuf.st_mode))
-        return false;
-    
-    if(pipe(input_cgi) ==-1)
-        return -1;
-
-    if(pipe(output_cgi) == -1)
-    {
-        close(input_cgi[0]);
-        close(input_cgi[1]);
-        return false;
-    }
-
-    if((pid = fork())== 0)
-    {
-        //child
-        close(input_cgi[1]);
-        close(output_cgi[0]);
-
-        dup2(input_cgi[0], 0);
-        dup2(output_cgi[1],1);
-
-        set_child_env();
-        execl(path.c_str(), path.c_str(), 0);
-
-    }
-    else
-    {
-        //parent
-        close(input_cgi[0]);
-        close(output_cgi[1]);
-        string body = _request.body();
-        if(!body.empty())
-        {
-            int nwrite;
-            nwrite = rio_writen(input_cgi[1], (void *)body.c_str(), body.size());
-            if(nwrite ==-1)
-                return false;
-        }
-        close(input_cgi[1]);
-
-        //read header
-        rio_t rio;
-        rio_readinitb(&rio, output_cgi[0]);
-        
-        char buf[MAXLINE];
-        char *start, *end;
-        char *finish, *rcur;
-
-        int nread;
-        while(nread = rio_readlineb(&rio, buf, MAXLINE))
-        {
-            start = buf;
-            finish = buf+nread;
-
-            if(*start =='\r' && *(start+1) == '\n')
-                break;
-
-            while(isspace(*start))
-                start++;
-            
-            end = start;
-            while(*end !=':')
-                end++;
-
-            string key(start, end);
-            
-
-            start = end+1;
-            while(isspace(*start))
-                start++;
-            rcur =finish-1;
-            while(isspace(*rcur) && rcur >start)
-                rcur--;
-            if(!isspace(*rcur))
-                rcur++;
-
-            string value(start, rcur);
-            _response.add_header(key, value);
-        }
-
-        //add body
-        while(nread = rio_readnb(&rio, buf, MAXLINE))
-        {
-            _response.append_to_body(buf, buf+nread);
-        }
-
-        close(output_cgi[0]);
-        int status;
-        waitpid(pid, &status, 0);
-        if(status == -1)
-            return false;
-    }
-    _response.set_status_code(200);
-    return true;
-
-}
-
-void HTTP::set_child_env()
-{
-    string server_protocol(_request.version_str());
-    string request_method(_request.method_str());
-    string http_accept(_request.get_header("Accept"));
-    string http_user_agent(_request.get_header("User-Agent"));
-    string http_referer(_request.get_header("Referer"));
-    string script_name(_request.get_uri());
-    string query_string(_request.get_query());
-    string content_length(_request.get_header("Content-Length"));
-    
-    string host(_request.get_header("Host"));
-    string server_name;
-    string server_port;
-    
-    auto it = host.begin();
-    for (; it != host.end(); ++it)
-        if (*it == ':')
-            break;
-    server_name = string(host.begin(), it);
-    
-    // 默认为80端口
-    if (it == host.end())
-        server_port = "80";
-    else
-        server_port = std::move(string(it+1, host.end()));
-    
-    if (!server_name.empty())
-        setenv("SERVER_NAME", server_name.data(), 0);
-    
-    if (!server_port.empty())
-        setenv("SERVER_PORT", server_port.data(), 0);
-    
-    if (!server_protocol.empty())
-        setenv("SERVER_PROTOCOL", server_protocol.data(), 0);
-    
-    if (!request_method.empty())
-        setenv("REQUEST_METHOD", request_method.data(), 0);
-    
-    if (!http_accept.empty())
-        setenv("HTTP_ACCEPT", http_accept.data(), 0);
-    
-    if (!http_user_agent.empty())
-        setenv("HTTP_USER_AGENT", http_user_agent.data(), 0);
-    
-    if (!http_referer.empty())
-        setenv("HTTP_REFERER", http_referer.data(), 0);
-    
-    if (!script_name.empty())
-        setenv("SCRIPT_NAME", script_name.data(), 0);
-    
-    if (!query_string.empty())
-        setenv("QUERY_STRING", query_string.data(), 0);
-    
-    if (!content_length.empty())
-        setenv("CONTENT_LENGTH", content_length.data(), 0);    
-}
-
-
-bool HTTP::put_file(string& path)
-{
-    std::ofstream f;
-    f.open(path);
-    if(!f)
-        return false;
-
-    string body = _request.body();
-    f<<body;
-    f.close();
-
-    string url ="HTTP://";
-    url += _request.get_header("Host");
-    url += _request.get_uri();
-    _response.set_body(url);
-    return true;
-    
-}
-
-void HTTP::serve_forbidden()
-{
-    string body;
-    body +="<HTML><HEAD><TITLE>FORBIDDEN</TITLE></HEAD>\r\n";
-    body +="<BODY><p>cannot access this file!</p>\r\n";
-    body +="</p></HTML>\r\n";
-
-    _response.set_status_code(403);
-    _response.add_header("Content-Type", "text/html");
-    _response.set_body(body);
-    
-}
-
-
-bool HTTP::is_access(string &path)
-{
-    struct stat sbuf;
-    stat(path.c_str(), &sbuf);
-    if(S_ISREG(sbuf.st_mode) || S_IRUSR & sbuf.st_mode)
-        return true;
-
-    return false;
-}
-
-int HTTP::get_file_size(string &path)
-{
-    struct stat sbuf;
-    stat(path.c_str(), &sbuf);
-    return sbuf.st_size;
-}
-
-bool HTTP::serve_file(string &path)
-{
-    string file_type = get_filetype(path);
-    _response.add_header("Content-type", file_type);
-    
-    int file_size = get_file_size(path);
-    int fd = open(path.c_str(), O_RDONLY, 0);
-    if(fd<0)
-        return false;
-    
-    char buf[MAXLINE];
-    int nread;
-
-    while(file_size >0)
-    {
-        nread = read(fd, buf, MAXLINE);
-        _response.append_to_body(buf, buf+nread);
-        file_size -= nread;
-    }
-    _response.set_status_code(200);
-    return true;
-    
-}
-
-
-string HTTP::get_filetype(string &path)
-{
-    int i = path.size()- 1;
-    string type;
-    while(path[i] !='.' && path[i] != '/')
-        i--;
-
-    if(path[i] == '/')
-        type = "text/plain";
-    else
-    {
-        string sub= path.substr(i);
-        auto it = content_type_dict.find(sub);
-        if(it != content_type_dict.end())
-            type = it->second;
-        else
-            type = "text/plain";
-    }
-
-    return type;
-}
-
-
-bool HTTP::is_dir(string &path)
-{
-    struct stat sbuf;
-    stat(path.c_str(), &sbuf);
-    return S_ISDIR(sbuf.st_mode);
-}
-
-
-bool HTTP::serve_index()
-{
-    string index[] ={"index.html", "index.htm", "home.html"};
-    string path = get_absolute_path();
-    for(int i=0; i<3; i++)
-    {
-        string now = path+index[i];
-        if(is_path_exist(now))
-        {
-            serve_file(now);
-            return true;
-
-        }
-
-    }
-    return false;
-}
-
-bool HTTP::is_path_exist(string &path)
-{
-    struct stat sbuf;
-    int n = stat(path.c_str(), &sbuf);
-    return n ==0;
-}
-
-
-void HTTP::serve_hello()
-{
-    
-    string body;
-    body +="<HTML><HEAD><TITLE>HELLO</TITLE></HEAD>\r\n";
-    body +="<BODY><p>hello world!</p>\r\n";
-    body +="</p></HTML>\r\n";
-
-    _response.set_status_code(200);
-    _response.add_header("Content-Type", "text/html");
-    _response.set_body(body);
-}
-
-string HTTP::get_absolute_path()
-{
-    string path = _request.get_uri();
-    auto it = path.begin();
-    while(*it == '.' ||*it == '/')
-        it++;
-    string sub(it, path.end());
-    return HTTP_base::ROOT_DIR+sub;
-}
-
-bool HTTP::supported()
-{
-    //accept_request first
-    assert(_request_flag);
-
-    if(_request.get_method() == HTTP_Method::UNKNOWN )
-    {
-        //cout<<"method UNKNOWN"<<endl;
-        return false;
-    }
-
-    if(_request.get_version() == HTTP_Version::UNKNOWN)
-    {
-        //cout<<"Version UNKNOWN"<<endl;
-        return false;
-    }
-
-    return true;
-}
-
-void HTTP::noimplement()
-{
-    string body;
-    body +="<HTML><HEAD><TITLE>method not implemented!</TITLE></HEAD>\r\n";
-    string method = method_to_str_dict[_request.get_method()];
-    body +="<BODY><p>http request method ";
-    body+= method;
-    body += " not implemented</p>\r\n";
-    body +="</p></HTML>\r\n";
-
-    _response.set_status_code(501);
-    _response.add_header("Content-Type", "text/html");
-    _response.set_body(body);
-}
-
-void HTTP::not_found()
-{
-    string body;
-
-    body +="<HTML><HEAD><TITLE>Not Found!</TITLE></HEAD>\r\n";
-    body +="<BODY><p>404 not found</p>\r\n";
-    body +="</p></HTML>\r\n";
-
-    _response.set_status_code(404);
-    _response.add_header("Content-Type", "text/html");
-    _response.set_body(body);
-}
+    char buf[1024];  
+    int numchars;  
+    char method[255];  
+    char url[255];  
+    char path[512];  
+    size_t i, j;  
+    struct stat st;  
+    int cgi = 0;      /* becomes true if server decides this is a CGI program */  
+    char *query_string = NULL;  
+  
+    /*得到请求的第一行*/  
+    numchars = get_line(client, buf, sizeof(buf));  
+    i = 0; j = 0;  
+    /*把客户端的请求方法存到 method 数组*/  
+    while (!ISspace(buf[j]) && (i < sizeof(method) - 1))  
+    {  
+        method[i] = buf[j];  
+        i++; j++;  
+    }  
+    method[i] = '\0';  
+  
+    /*如果既不是 GET 又不是 POST 则无法处理 */  
+    if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))  
+    {  
+        unimplemented(client);  
+        return;  
+    }  
+  
+    /* POST 的时候开启 cgi */  
+    if (strcasecmp(method, "POST") == 0)  
+        cgi = 1;  
+  
+    /*读取 url 地址*/  
+    i = 0;  
+    while (ISspace(buf[j]) && (j < sizeof(buf)))  
+        j++;  
+    while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < sizeof(buf)))  
+    {  
+        /*存下 url */  
+        url[i] = buf[j];  
+        i++; j++;  
+    }  
+    url[i] = '\0';  
+  
+    /*处理 GET 方法*/  
+    if (strcasecmp(method, "GET") == 0)  
+    {  
+        /* 待处理请求为 url */  
+        query_string = url;  
+        while ((*query_string != '?') && (*query_string != '\0'))  
+            query_string++;  
+        /* GET 方法特点，? 后面为参数*/  
+        if (*query_string == '?')  
+        {  
+            /*开启 cgi */  
+            cgi = 1;  
+            *query_string = '\0';  
+            query_string++;  
+        }  
+    }  
+  
+    /*格式化 url 到 path 数组，html 文件都在 htdocs 中*/  
+    sprintf(path, "htdocs%s", url);  
+    /*默认情况为 index.html */  
+    if (path[strlen(path) - 1] == '/')  
+        strcat(path, "index.html");  
+    /*根据路径找到对应文件 */  
+    if (stat(path, &st) == -1) {  
+        /*把所有 headers 的信息都丢弃*/  
+        while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */  
+            numchars = get_line(client, buf, sizeof(buf));  
+        /*回应客户端找不到*/  
+        not_found(client);  
+    }  
+    else  
+    {  
+        /*如果是个目录，则默认使用该目录下 index.html 文件*/  
+        if ((st.st_mode & S_IFMT) == S_IFDIR)  
+            strcat(path, "/index.html");  
+      if ((st.st_mode & S_IXUSR) || (st.st_mode & S_IXGRP) || (st.st_mode & S_IXOTH)    )  
+          cgi = 1;  
+      /*不是 cgi,直接把服务器文件返回，否则执行 cgi */  
+      if (!cgi)  
+          serve_file(client, path);  
+      else  
+          execute_cgi(client, path, method, query_string);  
+    }  
+  
+    /*断开与客户端的连接（HTTP 特点：无连接）*/  
+    close(client);  
+}  
+
+/**********************************************************************/  
+/* Inform the client that a request it has made has a problem. 
+ * Parameters: client socket */  
+/**********************************************************************/  
+void HTTP::bad_request(int client)  
+{  
+    char buf[1024];  
+  
+    /*回应客户端错误的 HTTP 请求 */  
+    sprintf(buf, "HTTP/1.0 400 BAD REQUEST\r\n");  
+    send(client, buf, sizeof(buf), 0);  
+    sprintf(buf, "Content-type: text/html\r\n");  
+    send(client, buf, sizeof(buf), 0);  
+    sprintf(buf, "\r\n");  
+    send(client, buf, sizeof(buf), 0);  
+    sprintf(buf, "<P>Your browser sent a bad request, ");  
+    send(client, buf, sizeof(buf), 0);  
+    sprintf(buf, "such as a POST without a Content-Length.\r\n");  
+    send(client, buf, sizeof(buf), 0);  
+}  
+  
+/**********************************************************************/  
+/* Put the entire contents of a file out on a socket.  This function 
+ * is named after the UNIX "cat" command, because it might have been 
+ * easier just to do something like pipe, fork, and exec("cat"). 
+ * Parameters: the client socket descriptor 
+ *             FILE pointer for the file to cat */  
+/**********************************************************************/  
+void HTTP::cat(int client, FILE *resource)  
+{  
+    char buf[1024];  
+  
+    /*读取文件中的所有数据写到 socket */  
+    fgets(buf, sizeof(buf), resource);  
+    while (!feof(resource))  
+    {  
+        send(client, buf, strlen(buf), 0);  
+        fgets(buf, sizeof(buf), resource);  
+    }  
+}  
+  
+/**********************************************************************/  
+/* Inform the client that a CGI script could not be executed. 
+ * Parameter: the client socket descriptor. */  
+/**********************************************************************/  
+void HTTP::cannot_execute(int client)  
+{  
+    char buf[1024];  
+  
+    /* 回应客户端 cgi 无法执行*/  
+    sprintf(buf, "HTTP/1.0 500 Internal Server Error\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "Content-type: text/html\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "<P>Error prohibited CGI execution.\r\n");  
+    send(client, buf, strlen(buf), 0);  
+}  
+  
+/**********************************************************************/  
+/* Print out an error message with perror() (for system errors; based 
+ * on value of errno, which indicates system call errors) and exit the 
+ * program indicating an error. */  
+/**********************************************************************/  
+void HTTP::error_die(const char *sc)  
+{  
+    /*出错信息处理 */  
+    perror(sc);  
+    exit(1);  
+}  
+  
+/**********************************************************************/  
+/* Execute a CGI script.  Will need to set environment variables as 
+ * appropriate. 
+ * Parameters: client socket descriptor 
+ *             path to the CGI script */  
+/**********************************************************************/  
+void HTTP::execute_cgi(int client, const char *path, const char *method, const char *query_string)  
+{  
+    char buf[1024];  
+    int cgi_output[2];  
+    int cgi_input[2];  
+    pid_t pid;  
+    int status;  
+    int i;  
+    char c;  
+    int numchars = 1;  
+    int content_length = -1;  
+  
+    buf[0] = 'A'; buf[1] = '\0';  
+    if (strcasecmp(method, "GET") == 0)  
+        /*把所有的 HTTP header 读取并丢弃*/  
+        while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */  
+            numchars = get_line(client, buf, sizeof(buf));  
+    else    /* POST */  
+    {  
+        /* 对 POST 的 HTTP 请求中找出 content_length */  
+        numchars = get_line(client, buf, sizeof(buf));  
+        while ((numchars > 0) && strcmp("\n", buf))  
+        {  
+            /*利用 \0 进行分隔 */  
+            buf[15] = '\0';  
+            /* HTTP 请求的特点*/  
+            if (strcasecmp(buf, "Content-Length:") == 0)  
+                content_length = atoi(&(buf[16]));  
+            numchars = get_line(client, buf, sizeof(buf));  
+        }  
+        /*没有找到 content_length */  
+        if (content_length == -1) {  
+            /*错误请求*/  
+            bad_request(client);  
+            return;  
+        }  
+    }  
+  
+    /* 正确，HTTP 状态码 200 */  
+    sprintf(buf, "HTTP/1.0 200 OK\r\n");  
+    send(client, buf, strlen(buf), 0);  
+  
+    /* 建立管道*/  
+    if (pipe(cgi_output) < 0) {  
+        /*错误处理*/  
+        cannot_execute(client);  
+        return;  
+    }  
+    /*建立管道*/  
+    if (pipe(cgi_input) < 0) {  
+        /*错误处理*/  
+        cannot_execute(client);  
+        return;  
+    }  
+  
+    if ((pid = fork()) < 0 ) {  
+        /*错误处理*/  
+        cannot_execute(client);  
+        return;  
+    }  
+    if (pid == 0)  /* child: CGI script */  
+    {  
+        char meth_env[255];  
+        char query_env[255];  
+        char length_env[255];  
+  
+        /* 把 STDOUT 重定向到 cgi_output 的写入端 */  
+        dup2(cgi_output[1], 1);  
+        /* 把 STDIN 重定向到 cgi_input 的读取端 */  
+        dup2(cgi_input[0], 0);  
+        /* 关闭 cgi_input 的写入端 和 cgi_output 的读取端 */  
+        close(cgi_output[0]);  
+        close(cgi_input[1]);  
+        /*设置 request_method 的环境变量*/  
+        sprintf(meth_env, "REQUEST_METHOD=%s", method);  
+        putenv(meth_env);  
+        if (strcasecmp(method, "GET") == 0) {  
+            /*设置 query_string 的环境变量*/  
+            sprintf(query_env, "QUERY_STRING=%s", query_string);  
+            putenv(query_env);  
+        }  
+        else {   /* POST */  
+            /*设置 content_length 的环境变量*/  
+            sprintf(length_env, "CONTENT_LENGTH=%d", content_length);  
+            putenv(length_env);  
+        }  
+        /*用 execl 运行 cgi 程序*/  
+        execl(path, path, NULL);  
+        exit(0);  
+    } else {    /* parent */  
+        /* 关闭 cgi_input 的读取端 和 cgi_output 的写入端 */  
+        close(cgi_output[1]);  
+        close(cgi_input[0]);  
+        if (strcasecmp(method, "POST") == 0)  
+            /*接收 POST 过来的数据*/  
+            for (i = 0; i < content_length; i++) {  
+                recv(client, &c, 1, 0);  
+                /*把 POST 数据写入 cgi_input，现在重定向到 STDIN */  
+                write(cgi_input[1], &c, 1);  
+            }  
+        /*读取 cgi_output 的管道输出到客户端，该管道输入是 STDOUT */  
+        while (read(cgi_output[0], &c, 1) > 0)  
+            send(client, &c, 1, 0);  
+  
+        /*关闭管道*/  
+        close(cgi_output[0]);  
+        close(cgi_input[1]);  
+        /*等待子进程*/  
+        waitpid(pid, &status, 0);  
+    }  
+}  
+  
+/**********************************************************************/  
+/* Get a line from a socket, whether the line ends in a newline, 
+ * carriage return, or a CRLF combination.  Terminates the string read 
+ * with a null character.  If no newline indicator is found before the 
+ * end of the buffer, the string is terminated with a null.  If any of 
+ * the above three line terminators is read, the last character of the 
+ * string will be a linefeed and the string will be terminated with a 
+ * null character. 
+ * Parameters: the socket descriptor 
+ *             the buffer to save the data in 
+ *             the size of the buffer 
+ * Returns: the number of bytes stored (excluding null) */  
+/**********************************************************************/  
+int HTTP::get_line(int sock, char *buf, int size)  
+{  
+    int i = 0;  
+    char c = '\0';  
+    int n;  
+  
+    /*把终止条件统一为 \n 换行符，标准化 buf 数组*/  
+    while ((i < size - 1) && (c != '\n'))  
+    {  
+        /*一次仅接收一个字节*/  
+        n = recv(sock, &c, 1, 0);  
+        /* DEBUG printf("%02X\n", c); */  
+        if (n > 0)  
+        {  
+            /*收到 \r 则继续接收下个字节，因为换行符可能是 \r\n */  
+            if (c == '\r')  
+            {  
+                /*使用 MSG_PEEK 标志使下一次读取依然可以得到这次读取的内容，可认为接收窗口不滑动*/  
+                n = recv(sock, &c, 1, MSG_PEEK);  
+                /* DEBUG printf("%02X\n", c); */  
+                /*但如果是换行符则把它吸收掉*/  
+                if ((n > 0) && (c == '\n'))  
+                    recv(sock, &c, 1, 0);  
+                else  
+                    c = '\n';  
+            }  
+            /*存到缓冲区*/  
+            buf[i] = c;  
+            i++;  
+        }  
+        else  
+            c = '\n';  
+    }  
+    buf[i] = '\0';  
+  
+    /*返回 buf 数组大小*/  
+    return(i);  
+}  
+  
+/**********************************************************************/  
+/* Return the informational HTTP headers about a file. */  
+/* Parameters: the socket to print the headers on 
+ *             the name of the file */  
+/**********************************************************************/  
+void HTTP::headers(int client, const char *filename)  
+{  
+    char buf[1024];  
+    (void)filename;  /* could use filename to determine file type */  
+  
+    /*正常的 HTTP header */  
+    strcpy(buf, "HTTP/1.0 200 OK\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    /*服务器信息*/  
+    strcpy(buf, SERVER_STRING);  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "Content-Type: text/html\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    strcpy(buf, "\r\n");  
+    send(client, buf, strlen(buf), 0);  
+}  
+  
+/**********************************************************************/  
+/* Give a client a 404 not found status message. */  
+/**********************************************************************/  
+void HTTP::not_found(int client)  
+{  
+    char buf[1024];  
+  
+    /* 404 页面 */  
+    sprintf(buf, "HTTP/1.0 404 NOT FOUND\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    /*服务器信息*/  
+    sprintf(buf, SERVER_STRING);  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "Content-Type: text/html\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "<HTML><TITLE>Not Found</TITLE>\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "<BODY><P>The server could not fulfill\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "your request because the resource specified\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "is unavailable or nonexistent.\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "</BODY></HTML>\r\n");  
+    send(client, buf, strlen(buf), 0);  
+}  
+  
+/**********************************************************************/  
+/* Send a regular file to the client.  Use headers, and report 
+ * errors to client if they occur. 
+ * Parameters: a pointer to a file structure produced from the socket 
+ *              file descriptor 
+ *             the name of the file to serve */  
+/**********************************************************************/  
+void HTTP::serve_file(int client, const char *filename)  
+{  
+    FILE *resource = NULL;  
+    int numchars = 1;  
+    char buf[1024];  
+  
+    /*读取并丢弃 header */  
+    buf[0] = 'A'; buf[1] = '\0';  
+    while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */  
+        numchars = get_line(client, buf, sizeof(buf));  
+  
+    /*打开 sever 的文件*/  
+    resource = fopen(filename, "r");  
+    if (resource == NULL)  
+        not_found(client);  
+    else  
+    {  
+        /*写 HTTP header */  
+        headers(client, filename);  
+        /*复制文件*/  
+        cat(client, resource);  
+    }  
+    fclose(resource);  
+}  
+
+/**********************************************************************/  
+/* Inform the client that the requested web method has not been 
+ * implemented. 
+ * Parameter: the client socket */  
+/**********************************************************************/  
+void HTTP::unimplemented(int client)  
+{  
+    char buf[1024];  
+  
+    /* HTTP method 不被支持*/  
+    sprintf(buf, "HTTP/1.0 501 Method Not Implemented\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    /*服务器信息*/  
+    sprintf(buf, SERVER_STRING);  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "Content-Type: text/html\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "<HTML><HEAD><TITLE>Method Not Implemented\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "</TITLE></HEAD>\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "<BODY><P>HTTP request method not supported.\r\n");  
+    send(client, buf, strlen(buf), 0);  
+    sprintf(buf, "</BODY></HTML>\r\n");  
+    send(client, buf, strlen(buf), 0);  
+}  
