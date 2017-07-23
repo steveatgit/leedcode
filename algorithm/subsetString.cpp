@@ -11,7 +11,7 @@ void subsetCore(string str, int start, int end, string &s)
 	}
 	s += str[start];
 	subsetCore(str, start + 1, end, s);
-	s = s.substr(0, s.length() - 1);
+	s = s.substr(0, s.length() - 1);  //. s="abcd"; s.substr(0, s.length()-1) "abc"
 	subsetCore(str, start + 1, end, s);
 }
 
