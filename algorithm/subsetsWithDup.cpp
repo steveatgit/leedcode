@@ -1,3 +1,9 @@
+http://www.cnblogs.com/felixfang/p/3775712.html
+[1]  {} {1}
+
+[1,2]  {} {1} {2} {1,2}
+[1,2,2]  {} {1} {2} {1,2} {2,2} {1,2,2}
+
 #include <vector>
 #include <iostream>
 using namespace std;
