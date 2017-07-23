@@ -16,7 +16,7 @@ bool isSymmetrical(char *begin, char *end)
 	return true;
 }
 
-int getLongestSymmetricalLength_1(char *str)
+/*int getLongestSymmetricalLength_1(char *str)
 {
 	if(NULL == str) {
 		return -1;
@@ -39,7 +39,7 @@ int getLongestSymmetricalLength_1(char *str)
 		first++;
 	}
 	return result;
-}
+}*/
 
 int getLongestSymmetricalLength(char *str)
 {
