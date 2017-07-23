@@ -1,4 +1,6 @@
 http://blog.csdn.net/shw372029857/article/details/48663633
+在二叉树中，找到距离最远的两个节点的距离
+
 
 int longestPath(BTreeNode *root)
 {
