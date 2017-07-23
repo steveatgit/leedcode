@@ -1,3 +1,5 @@
+将奇数放在前面，偶数放在后面
+
 #include <iostream>
 using namespace std;
 
@@ -41,6 +43,6 @@ int main()
 	int a[6] = {4,2,1,6,3,5};
 	recorderOddEven(a, 6);
 	for (int i=0;i<6;i++) 
-		cout<<a[i]<<' ';
+		cout<<a[i]<<' ';  //5 3 1 6 2 4
 	cout<<endl;
 }
